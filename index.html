@@ -30,27 +30,36 @@
 
     <script>
         let goals = [];
+        const API_URL = '/api/goals';
 
-        function saveGoals() {
-            localStorage.setItem('dailyGoals', JSON.stringify(goals));
-        }
-
-        function loadGoals() {
-            const saved = localStorage.getItem('dailyGoals');
-            if (saved) {
-                goals = JSON.parse(saved);
+        async function loadGoals() {
+            try {
+                const response = await fetch(API_URL);
+                goals = await response.json();
                 renderGoals();
+            } catch (error) {
+                console.error('Failed to load goals:', error);
             }
         }
 
-        function addGoal() {
+        async function addGoal() {
             const input = document.getElementById('goalInput');
             const text = input.value.trim();
 
             if (text) {
-                goals.push({ text, completed: false });
-                input.value = '';
-                renderGoals();
+                try {
+                    const response = await fetch(API_URL, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ text })
+                    });
+                    const newGoal = await response.json();
+                    goals.push(newGoal);
+                    input.value = '';
+                    renderGoals();
+                } catch (error) {
+                    console.error('Failed to add goal:', error);
+                }
             }
         }
 
@@ -58,14 +67,30 @@
             if (e.key === 'Enter') addGoal();
         });
 
-        function toggleGoal(index) {
-            goals[index].completed = !goals[index].completed;
-            renderGoals();
+        async function toggleGoal(index) {
+            const goal = goals[index];
+            try {
+                const response = await fetch(`${API_URL}/${goal.id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ completed: !goal.completed })
+                });
+                goals[index] = await response.json();
+                renderGoals();
+            } catch (error) {
+                console.error('Failed to toggle goal:', error);
+            }
         }
 
-        function deleteGoal(index) {
-            goals.splice(index, 1);
-            renderGoals();
+        async function deleteGoal(index) {
+            const goal = goals[index];
+            try {
+                await fetch(`${API_URL}/${goal.id}`, { method: 'DELETE' });
+                goals.splice(index, 1);
+                renderGoals();
+            } catch (error) {
+                console.error('Failed to delete goal:', error);
+            }
         }
 
         function editGoal(index) {
@@ -91,10 +116,19 @@
             }
         }
 
-        function saveEdit(index, newText) {
+        async function saveEdit(index, newText) {
             const trimmed = newText.trim();
-            if (trimmed) {
-                goals[index].text = trimmed;
+            if (trimmed && trimmed !== goals[index].text) {
+                try {
+                    const response = await fetch(`${API_URL}/${goals[index].id}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ text: trimmed })
+                    });
+                    goals[index] = await response.json();
+                } catch (error) {
+                    console.error('Failed to update goal:', error);
+                }
             }
             renderGoals();
         }
@@ -110,7 +144,6 @@
                 </div>
             `).join('');
 
-            saveGoals();
             updateProgress();
         }
 
