@@ -173,3 +173,32 @@ h1 {
     font-size: 0.95rem;
     opacity: 0.9;
 }
+
+/* Mobile responsiveness */
+@media (max-width: 480px) {
+    body {
+        padding: 20px 10px;
+    }
+
+    .container {
+        padding: 25px 20px;
+    }
+
+    h1 {
+        font-size: 1.5rem;
+        margin-bottom: 20px;
+    }
+
+    .goal-input {
+        flex-direction: column;
+    }
+
+    .goal-input button {
+        width: 100%;
+        padding: 12px 20px;
+    }
+
+    .goal-input input {
+        padding: 12px 15px;
+    }
+}
