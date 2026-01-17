@@ -36,6 +36,23 @@ if (window.location.pathname.includes('auth.html')) {
     }
     window.switchAuthMode = switchAuthMode;
 
+    async function resendConfirmationEmail(email) {
+        const { error } = await supabaseClient.auth.resend({
+            type: 'signup',
+            email: email,
+            options: {
+                emailRedirectTo: window.location.origin
+            }
+        });
+
+        if (error) {
+            message.textContent = error.message;
+        } else {
+            message.textContent = 'A new confirmation email has been sent.';
+        }
+    }
+    window.resendConfirmationEmail = resendConfirmationEmail;
+
 
     authForm.addEventListener('submit', async (e) => {
         e.preventDefault();
@@ -47,11 +64,21 @@ if (window.location.pathname.includes('auth.html')) {
         if (isLogin) {
             response = await supabaseClient.auth.signInWithPassword({ email, password });
         } else {
-            response = await supabaseClient.auth.signUp({ email, password });
+            response = await supabaseClient.auth.signUp({
+                email,
+                password,
+                options: {
+                    emailRedirectTo: window.location.origin
+                }
+            });
         }
 
         if (response.error) {
-            message.textContent = response.error.message;
+            if (isLogin && response.error.message.includes('Email not confirmed')) {
+                message.innerHTML = `Email not confirmed. <a href="#" onclick="resendConfirmationEmail('${email}')">Resend confirmation</a>`;
+            } else {
+                message.textContent = response.error.message;
+            }
         } else {
             window.location.href = '/';
         }
