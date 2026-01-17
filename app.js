@@ -1,0 +1,130 @@
+        let goals = [];
+        const API_URL = '/.netlify/functions/goals';
+
+        async function loadGoals() {
+            try {
+                const response = await fetch(API_URL);
+                goals = await response.json();
+                renderGoals();
+            } catch (error) {
+                console.error('Failed to load goals:', error);
+            }
+        }
+
+        async function addGoal() {
+            const input = document.getElementById('goalInput');
+            const text = input.value.trim();
+
+            if (text) {
+                try {
+                    const response = await fetch(API_URL, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ text })
+                    });
+                    const newGoal = await response.json();
+                    goals.push(newGoal);
+                    input.value = '';
+                    renderGoals();
+                } catch (error) {
+                    console.error('Failed to add goal:', error);
+                }
+            }
+        }
+
+        document.getElementById('goalInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') addGoal();
+        });
+
+        async function toggleGoal(index) {
+            const goal = goals[index];
+            try {
+                const response = await fetch(`${API_URL}/${goal.id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ completed: !goal.completed })
+                });
+                goals[index] = await response.json();
+                renderGoals();
+            } catch (error) {
+                console.error('Failed to toggle goal:', error);
+            }
+        }
+
+        async function deleteGoal(index) {
+            const goal = goals[index];
+            try {
+                await fetch(`${API_URL}/${goal.id}`, { method: 'DELETE' });
+                goals.splice(index, 1);
+                renderGoals();
+            } catch (error) {
+                console.error('Failed to delete goal:', error);
+            }
+        }
+
+        function editGoal(index) {
+            const list = document.getElementById('goalsList');
+            const goalItem = list.children[index];
+            const textSpan = goalItem.querySelector('.goal-text');
+            const currentText = goals[index].text;
+
+            textSpan.innerHTML = `<input type="text" class="edit-input" value="${currentText}"
+                onblur="saveEdit(${index}, this.value)"
+                onkeydown="handleEditKey(event, ${index}, this)">`;
+
+            const editInput = textSpan.querySelector('.edit-input');
+            editInput.focus();
+            editInput.select();
+        }
+
+        function handleEditKey(event, index, input) {
+            if (event.key === 'Enter') {
+                input.blur();
+            } else if (event.key === 'Escape') {
+                renderGoals();
+            }
+        }
+
+        async function saveEdit(index, newText) {
+            const trimmed = newText.trim();
+            if (trimmed && trimmed !== goals[index].text) {
+                try {
+                    const response = await fetch(`${API_URL}/${goals[index].id}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ text: trimmed })
+                    });
+                    goals[index] = await response.json();
+                } catch (error) {
+                    console.error('Failed to update goal:', error);
+                }
+            }
+            renderGoals();
+        }
+
+        function renderGoals() {
+            const list = document.getElementById('goalsList');
+            list.innerHTML = goals.map((goal, index) => `
+                <div class="goal-item ${goal.completed ? 'completed' : ''}">
+                    <input type="checkbox" ${goal.completed ? 'checked' : ''}
+                           onchange="toggleGoal(${index})">
+                    <span class="goal-text" ondblclick="editGoal(${index})">${goal.text}</span>
+                    <button class="delete-btn" onclick="deleteGoal(${index})">×</button>
+                </div>
+            `).join('');
+
+            updateProgress();
+        }
+
+        function updateProgress() {
+            const total = goals.length;
+            const completed = goals.filter(g => g.completed).length;
+            const percentage = total ? (completed / total) * 100 : 0;
+
+            document.getElementById('progressFill').style.width = percentage + '%';
+            document.getElementById('progressText').textContent =
+                `${completed} of ${total} goals completed`;
+        }
+
+        loadGoals();
+    
